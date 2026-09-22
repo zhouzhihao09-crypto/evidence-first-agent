@@ -1,0 +1,9 @@
+Health and Safety Record
+Company: ABC Corporation Ltd
+Reporting Period: 2020-2025
+Total Incidents: 0 Lost Time Incidents
+Total Incidents: 2 Minor First Aid Cases
+LTIFR: 0.0
+TRIFR: 0.13
+Safety Audits Passed: 6 of 6
+Last Safety Audit: 2025-01-15

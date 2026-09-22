@@ -1,0 +1,10 @@
+Insurance Policy for ABC Corp
+Policy Number: INS-2024-8821
+Coverage Period: 2024-01-01 to 2024-12-31
+Status: ACTIVE
+Expiry Date: 2024-12-31
+Tender Coverage: Yes
+Valid for tender period: Yes
+Policyholder: ABC Corporation Ltd
+Coverage Type: Commercial General Liability
+Sum Insured: $5,000,000

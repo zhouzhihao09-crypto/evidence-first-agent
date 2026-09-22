@@ -1,0 +1,9 @@
+Tax Compliance Certificate
+Issuer: Inland Revenue Authority
+Company: ABC Corporation Ltd
+Tax Year: FY2024
+Status: COMPLIANT
+Date of Issue: 2025-03-15
+Last Tax Payment: 2025-01-30
+Outstanding Liabilities: None
+Certificate Valid Until: 2026-03-15
