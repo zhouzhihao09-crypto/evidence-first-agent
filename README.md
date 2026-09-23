@@ -40,6 +40,37 @@ Evidence-First Agent is a reusable open-source infrastructure for building busin
 
 ---
 
+## Screenshots
+
+### Evidence Explorer
+
+![Evidence-First Agent Dashboard](docs/images/dashboard.png)
+
+### Deterministic Verification
+
+![Insurance Verification](docs/images/insurance-verification.png)
+
+### Verified Evidence
+
+![Verified Requirement](docs/images/verified-requirement.png)
+
+## Demo
+
+A 60-second portfolio demo recording showing the Evidence Explorer UI in action:
+
+![Demo](docs/demo/evidence-first-agent-demo.gif)
+
+[Watch MP4](docs/demo/evidence-first-agent-demo.mp4)
+
+The demo covers:
+1. Dashboard overview with verification counts
+2. Insurance requirement — deterministic failure (expiry before tender deadline)
+3. VERIFIED requirement — supporting evidence with confidence score
+4. Evidence chain showing the full reasoning path
+5. Conclusion and return to dashboard
+
+---
+
 ## Architecture
 
 ![Evidence-First Agent Architecture](docs/evidence-first-architecture.svg)
@@ -57,7 +88,7 @@ Task -> Action -> Observation -> Evidence -> Verification -> Conclusion
 | `evidence_first/agent/` | Planner, Executor, Verifier |
 | `evidence_first/tools/` | Tool interface + implementations |
 | `evidence_first/evidence/` | Storage, graph, recorder |
-| `evidence_first/web/` | Web UI and API |
+| `evidence_first/web.py` | Web UI and API |
 | `evidence_first/llm/` | LLM provider abstraction |
 | `evidence_first/runtime/` | Permissions, approvals, run loop |
 | `evidence_first/cli/` | Command-line interface |
