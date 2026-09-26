@@ -81,3 +81,39 @@ def requires_approval(permission: str) -> bool:
 
 def can_execute_with(available_permission: str, required_permission: str) -> bool:
     return permission_level(available_permission) >= permission_level(required_permission)
+
+
+# --- Agent-reported actions (MCP / work ledger) -----------------------------
+#
+# An agent describing its own action ("send_email", "delete_records") is not
+# necessarily using one of the tool names in PERMISSION_MAP. These rules give
+# those actions a conservative permission. Anything still unrecognised resolves
+# to UNKNOWN_PERMISSION, which callers must treat as "ask a human".
+
+UNKNOWN_PERMISSION = "UNKNOWN_PERMISSION"
+
+AGENT_ACTION_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("delete", "destroy", "purge", "wipe", "revoke"), DELETE),
+    (("submit", "publish", "broadcast", "transfer", "charge", "payment"), SUBMIT),
+    (("send", "email", "notify", "sms", "slack", "post_message", "deploy", "release"), SEND),
+    (("modify_external", "update_external", "patch_external"), MODIFY),
+)
+
+
+def resolve_agent_permission(action_type: str, tool_name: str = "") -> tuple[str, str]:
+    """Resolve the permission for an agent-reported action.
+
+    Returns ``(permission, source)`` where source is one of
+    ``"map"`` (exact match in PERMISSION_MAP), ``"heuristic"`` (matched a
+    conservative keyword rule) or ``"unknown"``. Unknown actions fail closed:
+    callers must gate them behind human approval.
+    """
+    for key in (tool_name, action_type):
+        entry = PERMISSION_MAP.get(key)
+        if entry:
+            return entry["permission"], "map"
+    lowered = (action_type or "").lower()
+    for keywords, permission in AGENT_ACTION_RULES:
+        if any(keyword in lowered for keyword in keywords):
+            return permission, "heuristic"
+    return UNKNOWN_PERMISSION, "unknown"

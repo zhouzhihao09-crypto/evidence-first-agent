@@ -5,8 +5,20 @@ import time
 from typing import Any, Optional
 
 from evidence_first.models import (
-    Action, Observation, Evidence, Verification, Conclusion, Approval, Run, GraphEdge,
+    Action, Observation, Evidence, Verification, Conclusion, Approval, Run, GraphEdge, Claim,
 )
+from evidence_first.redaction import redact
+
+
+def _redact_structure(value: Any) -> Any:
+    """Recursively redact strings inside JSON-ish structures."""
+    if isinstance(value, str):
+        return redact(value)
+    if isinstance(value, dict):
+        return {k: _redact_structure(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_structure(v) for v in value]
+    return value
 
 
 class EvidenceStore:
@@ -102,6 +114,17 @@ class EvidenceStore:
             relationship TEXT,
             timestamp TEXT
         )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS claims (
+            claim_id TEXT PRIMARY KEY,
+            run_id TEXT,
+            statement TEXT,
+            status TEXT,
+            evidence_ids TEXT,
+            verification_id TEXT,
+            check_spec TEXT,
+            created_at TEXT,
+            verified_at TEXT
+        )""")
         self.conn.commit()
 
     def _dict_from_row(self, row: sqlite3.Row, columns: list[str]) -> dict[str, Any]:
@@ -133,8 +156,9 @@ class EvidenceStore:
         self.conn.execute(
             "INSERT OR REPLACE INTO actions VALUES (?,?,?,?,?,?,?,?,?,?)",
             (action.action_id, run_id, action.type, action.tool,
-             json.dumps(action.input), action.reason, action.timestamp,
-             action.status, action.output, action.permission_required),
+             json.dumps(_redact_structure(action.input)), redact(action.reason),
+             action.timestamp, action.status, redact(action.output or ""),
+             action.permission_required),
         )
         self.conn.commit()
 
@@ -155,7 +179,8 @@ class EvidenceStore:
         self.conn.execute(
             "INSERT OR REPLACE INTO observations VALUES (?,?,?,?,?)",
             (observation.observation_id, observation.action_id,
-             observation.content, observation.timestamp, json.dumps(observation.metadata)),
+             redact(observation.content), observation.timestamp,
+             json.dumps(_redact_structure(observation.metadata))),
         )
         self.conn.commit()
 
@@ -172,9 +197,10 @@ class EvidenceStore:
         self.conn.execute(
             "INSERT OR REPLACE INTO evidence_items VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             (evidence.evidence_id, evidence.observation_id, evidence.action_id,
-             evidence.content, evidence.source_type, evidence.filename, evidence.page,
-             evidence.snippet, evidence.hash, evidence.url, evidence.timestamp,
-             json.dumps(evidence.metadata)),
+             redact(evidence.content), evidence.source_type, evidence.filename, evidence.page,
+             redact(evidence.snippet) if evidence.snippet else evidence.snippet,
+             evidence.hash, evidence.url, evidence.timestamp,
+             json.dumps(_redact_structure(evidence.metadata))),
         )
         self.conn.commit()
 
@@ -193,7 +219,7 @@ class EvidenceStore:
             (verification.verification_id, verification.action_id,
              verification.observation_id, json.dumps(verification.evidence_ids),
              1 if verification.verified else 0, verification.confidence,
-             verification.reason, verification.status, verification.timestamp),
+             redact(verification.reason), verification.status, verification.timestamp),
         )
         self.conn.commit()
 
@@ -216,7 +242,7 @@ class EvidenceStore:
         self.conn.execute(
             "INSERT OR REPLACE INTO conclusions VALUES (?,?,?,?,?,?,?)",
             (conclusion.conclusion_id, conclusion.requirement_id,
-             conclusion.verification_id, conclusion.status, conclusion.reason,
+             conclusion.verification_id, conclusion.status, redact(conclusion.reason),
              json.dumps(conclusion.evidence_ids), conclusion.timestamp),
         )
         self.conn.commit()
@@ -252,6 +278,69 @@ class EvidenceStore:
             "SELECT * FROM approvals WHERE run_id=? AND status='pending'", (run_id,)
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def get_approvals(self, run_id: str) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            "SELECT * FROM approvals WHERE run_id=? ORDER BY requested_at", (run_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # --- Claims ---
+    def save_claim(self, claim: Claim) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO claims VALUES (?,?,?,?,?,?,?,?,?)",
+            (claim.claim_id, claim.run_id, redact(claim.statement), claim.status,
+             json.dumps(claim.evidence_ids), claim.verification_id,
+             json.dumps(_redact_structure(claim.check)), claim.created_at,
+             claim.verified_at),
+        )
+        self.conn.commit()
+
+    def _claim_from_row(self, row: sqlite3.Row) -> dict[str, Any]:
+        d = dict(row)
+        d["check"] = {}
+        for source, target in (("evidence_ids", "evidence_ids"), ("check_spec", "check")):
+            if d.get(source):
+                try:
+                    d[target] = json.loads(d[source])
+                except (TypeError, ValueError):
+                    d[target] = {} if target == "check" else []
+        return d
+
+    def get_claim(self, claim_id: str) -> Optional[dict[str, Any]]:
+        row = self.conn.execute(
+            "SELECT * FROM claims WHERE claim_id=?", (claim_id,)
+        ).fetchone()
+        return self._claim_from_row(row) if row else None
+
+    def get_claims(self, run_id: str) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            "SELECT * FROM claims WHERE run_id=? ORDER BY created_at, claim_id", (run_id,)
+        ).fetchall()
+        return [self._claim_from_row(r) for r in rows]
+
+    def get_claim_verifications(self, run_id: str) -> list[dict[str, Any]]:
+        """Verifications recorded against claims of a run.
+
+        Claim verifications are not attached to an action, so they are not
+        returned by :meth:`get_verifications` (which joins through actions).
+        """
+        rows = self.conn.execute(
+            """SELECT v.* FROM verifications v
+               JOIN claims c ON c.verification_id = v.verification_id
+               WHERE c.run_id=? ORDER BY v.timestamp, v.verification_id""",
+            (run_id,),
+        ).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            if d.get("evidence_ids"):
+                try:
+                    d["evidence_ids"] = json.loads(d["evidence_ids"])
+                except (TypeError, ValueError):
+                    d["evidence_ids"] = []
+            results.append(d)
+        return results
 
     def update_approval(self, approval_id: str, decision: str) -> None:
         self.conn.execute(

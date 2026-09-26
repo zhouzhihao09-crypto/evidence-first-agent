@@ -175,5 +175,67 @@ def inspect(run_id: str) -> None:
         console.print(table)
 
 
+@main.command()
+@click.argument("run_id")
+@click.option("--json", "as_json", is_flag=True, help="Output the receipt as canonical JSON")
+@click.option("--db", "db_path", default=None, help="Evidence database path")
+def receipt(run_id: str, as_json: bool, db_path: str = None) -> None:
+    """Show the AI Work Receipt for a completed run."""
+    from evidence_first.receipt import build_receipt, canonical_json, render_receipt_text
+
+    store = EvidenceStore(db_path=db_path) if db_path else EvidenceStore()
+    try:
+        built = build_receipt(store, run_id)
+        if not built:
+            console.print(f"[red]Run not found: {run_id}[/red]")
+            sys.exit(1)
+        if as_json:
+            click.echo(canonical_json(built))
+            return
+        console.print(Panel(
+            Text(render_receipt_text(built), no_wrap=False),
+            title="AI Work Receipt",
+            border_style="cyan",
+        ))
+        result = built.get("result", {})
+        color = "green" if result.get("status") == "VERIFIED" else "yellow"
+        console.print(
+            f"\n[bold]Result:[/bold] [{color}]{result.get('status', '')}[/{color}]  "
+            f"[dim]({result.get('verified', 0)} verified, "
+            f"{result.get('insufficient_evidence', 0)} insufficient evidence, "
+            f"{result.get('failed', 0)} failed)[/dim]"
+        )
+    finally:
+        store.close()
+
+
+@main.command()
+@click.option(
+    "--transport",
+    type=click.Choice(["stdio", "streamable-http"]),
+    default="stdio",
+    show_default=True,
+    help="MCP transport to serve",
+)
+@click.option("--host", default="127.0.0.1", show_default=True, help="HTTP bind host")
+@click.option("--port", default=8765, show_default=True, type=int, help="HTTP bind port")
+@click.option("--db", "db_path", default=None, help="Evidence database path")
+def mcp(transport: str, host: str, port: int, db_path: str = None) -> None:
+    """Run the MCP server (adapter over the Evidence-First core)."""
+    from evidence_first.mcp.server import main as mcp_main
+
+    mcp_main(transport=transport, host=host, port=port, db_path=db_path)
+
+
+@click.group()
+def evidence_first_main() -> None:
+    """Evidence-First Agent - AI work receipts."""
+
+
+evidence_first_main.add_command(receipt)
+evidence_first_main.add_command(inspect)
+evidence_first_main.add_command(mcp)
+
+
 if __name__ == "__main__":
     main()

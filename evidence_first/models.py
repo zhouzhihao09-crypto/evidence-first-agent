@@ -73,6 +73,26 @@ class Verification:
 
 
 @dataclass
+class Claim:
+    """A statement that can be verified against recorded evidence.
+
+    ``check`` holds an optional deterministic check spec (see
+    :mod:`evidence_first.verification`), e.g.
+    ``{"type": "keyword_present", "keyword": "passed"}``.
+    """
+
+    claim_id: str = field(default_factory=lambda: _uid("claim_"))
+    run_id: str = ""
+    statement: str = ""
+    status: str = "NOT_VERIFIED"
+    evidence_ids: list[str] = field(default_factory=list)
+    verification_id: Optional[str] = None
+    check: dict[str, Any] = field(default_factory=dict)
+    created_at: str = field(default_factory=_now_iso)
+    verified_at: Optional[str] = None
+
+
+@dataclass
 class Conclusion:
     conclusion_id: str = field(default_factory=lambda: _uid("con_"))
     requirement_id: Optional[str] = None
@@ -87,6 +107,7 @@ class Conclusion:
 class Approval:
     approval_id: str = field(default_factory=lambda: _uid("appr_"))
     action_id: str = ""
+    run_id: str = ""
     requested_permission: str = ""
     reason: str = ""
     status: str = "pending"
