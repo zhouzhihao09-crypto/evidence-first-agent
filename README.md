@@ -37,11 +37,12 @@ AI WORK RECEIPT
 ────────────────────────────────────────────────────────
 
 Run:        run_8d91a2
-Agent:      example coding agent
+Agent:      simulated coding agent
 Task:       Fix the authentication bug in session validation
-Objective:  Session tokens are rejected after logout
+Objective:  Session tokens are rejected after logout, and the regression test proves it
 Started:    2026-09-26T02:43:00.876190+00:00
 Finished:   2026-09-26T02:43:00.973702+00:00
+Run status: completed
 
 ACTIONS (7)
   - inspect_file  via agent [success] READ
@@ -82,8 +83,10 @@ RECEIPT HASH
   version: 1
 ```
 
-> Real output from `python examples/coding_agent/auth_fix.py`, with the run id
-> and timestamps from one sample run. Every run produces a different hash.
+> Adapted from the real output of
+> `python examples/coding_agent/auth_fix.py` — the run id and timestamps are
+> from one sample run, and the columns are spaced out for the README. Every run
+> produces a different hash.
 
 ![Work Receipt](docs/images/work-receipt.png)
 
@@ -192,16 +195,16 @@ Versioned JSON. Canonical serialization, then SHA-256.
   "run_id": "run_8d91a2",
   "run": {
     "task_id": "task_1a2b3c",
-    "agent": "example coding agent",
+    "agent": "simulated coding agent",
     "task": "Fix the authentication bug in session validation",
-    "objective": "Session tokens are rejected after logout",
+    "objective": "Session tokens are rejected after logout, and the regression test proves it",
     "status": "completed",
-    "started_at": "2026-09-26T02:38:44.755748+00:00",
-    "finished_at": "2026-09-26T02:38:44.848773+00:00"
+    "started_at": "2026-09-26T02:43:00.876190+00:00",
+    "finished_at": "2026-09-26T02:43:00.973702+00:00"
   },
   "actions": [{"action_id": "act_...", "type": "run_tests", "tool": "agent", "status": "success", "permission_required": "READ"}],
   "evidence": [{"evidence_id": "ev_...", "type": "log", "source": "pytest", "hash": "7b67...", "snippet": "3 passed in 0.31s"}],
-  "claims": [{"claim_id": "claim_...", "statement": "All authentication tests pass.", "status": "VERIFIED", "source": "explicit", "evidence_ids": ["ev_..."]}],
+  "claims": [{"claim_id": "claim_...", "statement": "The authentication regression tests pass.", "status": "VERIFIED", "source": "explicit", "evidence_ids": ["ev_..."]}],
   "verifications": [{"verification_id": "ver_...", "claim_id": "claim_...", "status": "VERIFIED", "reason": "Keyword '3 passed' found in recorded evidence."}],
   "approvals": [],
   "result": {"status": "VERIFIED", "claims_total": 3, "verified": 3, "insufficient_evidence": 0, "not_verified": 0, "failed": 0, "pending_approvals": 0},
@@ -221,6 +224,12 @@ Versioned JSON. Canonical serialization, then SHA-256.
 The same logical receipt therefore always produces the same
 `sha256:…` value, and any change to evidence, a claim, or a verification
 changes it. `evidence_first.receipt.verify_receipt_hash()` re-checks a receipt.
+
+**Integrity, not authenticity.** The SHA-256 hash lets you detect that a
+receipt's contents changed. It is not a digital signature: receipts are not
+signed today, so anyone able to modify a receipt can also recompute its hash.
+It proves internal consistency, not who produced it. Signed receipts are on the
+[roadmap](#roadmap).
 
 **What `VERIFIED` does and does not mean.** It means the recorded evidence
 satisfies the check declared for that claim, and that nothing is left pending.
@@ -258,7 +267,7 @@ ledger.verify_claim(claim["claim_id"])   # -> VERIFIED
 
 Claim states: `VERIFIED`, `FAILED`, `INSUFFICIENT_EVIDENCE`, `NOT_VERIFIED`.
 
-Two rules keep the system honest:
+Three rules keep the system honest:
 
 - **Verification is explicit, never automatic.** A claim stays `NOT_VERIFIED`
   until you call `verify_claim` (or the MCP `verify` tool), even when it
@@ -329,6 +338,11 @@ audit://run/{run_id}       chronological audit trail
 
 Prompt: `verify_work` — instructs an agent to work evidence-first and to
 report the engine's status rather than upgrading it.
+
+The seven tools and three resources above, rendered from the running server's
+own advertised capabilities:
+
+![MCP server tools and resources](docs/images/mcp-integration.png)
 
 ### Host configuration
 

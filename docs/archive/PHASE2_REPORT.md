@@ -1,5 +1,11 @@
 # Phase 2 — Real-World MVP Validation & Demo Audit: Final Report
 
+> **Historical document — archived.** This report is kept exactly as it was
+> written at the end of Phase 2 (v0.1.0). The test counts, run ids and
+> environment notes below describe that point in time and are **not** the
+> current state of the project. For current status see the
+> [README](../../README.md) and [CHANGELOG](../../CHANGELOG.md).
+
 ---
 
 ## Test Results

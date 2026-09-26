@@ -90,4 +90,6 @@ no encryption at rest, no remote storage.
 Initial release: task → action → observation → evidence → verification →
 conclusion chain, SQLite evidence store, evidence graph, permission model with
 human approval gates, tender requirement verification strategies, mock LLM
-provider, CLI, and the Evidence Explorer web UI. See `PHASE2_REPORT.md`.
+provider, CLI, and the Evidence Explorer web UI. See the historical
+[`docs/archive/PHASE2_REPORT.md`](docs/archive/PHASE2_REPORT.md) for the
+Phase 2 validation notes as they were written at the time.
